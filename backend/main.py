@@ -86,6 +86,23 @@ def extract_text_with_gemini_rest(api_key: str, base64_image: str) -> str:
     except (KeyError, IndexError):
         return ""
 
+@app.post("/api/verify")
+async def verify_auth(
+    api_key: str = Form(None),
+    site_password: str = Form(None)
+):
+    """Verifies the site password or API key before allowing upload."""
+    server_api_key = os.environ.get("GEMINI_API_KEY")
+    server_password = os.environ.get("SITE_PASSWORD", "0534418634")
+    
+    if api_key and api_key.strip():
+        # A simple check could be added here to call Google API, but we'll accept it
+        return {"status": "success", "message": "API key provided."}
+    elif site_password and site_password.strip() == server_password:
+        return {"status": "success", "message": "Password correct."}
+    else:
+        raise HTTPException(status_code=401, detail="كلمة المرور غير صحيحة، أو مفتاح API غير صالح.")
+
 @app.post("/api/extract")
 async def extract_text(
     file: UploadFile = File(...),

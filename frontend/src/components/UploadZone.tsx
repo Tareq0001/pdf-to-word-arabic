@@ -18,6 +18,8 @@ export default function UploadZone() {
   const [authMode, setAuthMode] = useState<"OWN_KEY" | "SITE_PASSWORD">("SITE_PASSWORD");
   const [userApiKey, setUserApiKey] = useState("");
   const [sitePassword, setSitePassword] = useState("");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   useEffect(() => {
     if (status !== "UPLOADING") return;
@@ -31,6 +33,41 @@ export default function UploadZone() {
     }, 1500); // update every 1500ms
     return () => clearInterval(interval);
   }, [status]);
+
+  const handleVerify = async () => {
+    setErrorMsg(null);
+    setIsVerifying(true);
+    const formData = new FormData();
+    if (authMode === "OWN_KEY" && userApiKey.trim()) {
+      formData.append("api_key", userApiKey.trim());
+    } else if (authMode === "SITE_PASSWORD" && sitePassword.trim()) {
+      formData.append("site_password", sitePassword.trim());
+    } else {
+      setErrorMsg("الرجاء إدخال البيانات المطلوبة.");
+      setIsVerifying(false);
+      return;
+    }
+
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const response = await fetch(`${API_URL}/api/verify`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `فشل التحقق`);
+      }
+
+      setIsAuthenticated(true);
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg(err.message || "حدث خطأ أثناء التحقق.");
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
@@ -70,7 +107,7 @@ export default function UploadZone() {
       setStatus("FAILED");
       setErrorMsg(err.message || "An error occurred during extraction.");
     }
-  }, []);
+  }, [authMode, userApiKey, sitePassword]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -207,59 +244,88 @@ export default function UploadZone() {
     );
   }
 
-  // IDLE State
-  return (
-    <div className="w-full max-w-2xl mx-auto flex flex-col items-center space-y-6">
-      
-      {/* Auth UI */}
-      <div className="w-full bg-slate-800/40 border border-slate-700/50 rounded-2xl p-4 backdrop-blur-sm">
-        <div className="flex justify-center mb-4 space-x-2 space-x-reverse" dir="rtl">
-          <button
-            onClick={() => setAuthMode("SITE_PASSWORD")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2 space-x-reverse ${
-              authMode === "SITE_PASSWORD" ? "bg-purple-600 text-white" : "bg-slate-700/50 text-slate-300 hover:bg-slate-700"
-            }`}
-          >
-            <Lock className="w-4 h-4" />
-            <span>لدي كلمة مرور الموقع</span>
-          </button>
-          <button
-            onClick={() => setAuthMode("OWN_KEY")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2 space-x-reverse ${
-              authMode === "OWN_KEY" ? "bg-purple-600 text-white" : "bg-slate-700/50 text-slate-300 hover:bg-slate-700"
-            }`}
-          >
-            <Key className="w-4 h-4" />
-            <span>مفتاح API الخاص بي</span>
-          </button>
-        </div>
+  // LOCK SCREEN STATE
+  if (!isAuthenticated) {
+    return (
+      <div className="w-full max-w-lg mx-auto flex flex-col items-center space-y-6">
+        <div className="w-full bg-slate-800/40 border border-slate-700/50 rounded-3xl p-8 backdrop-blur-md shadow-2xl">
+          <div className="flex flex-col items-center mb-8">
+            <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mb-4">
+              <Lock className="w-8 h-8 text-purple-400" />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-100">تسجيل الدخول</h2>
+            <p className="text-slate-400 mt-2 text-center text-sm">اختر طريقة الدخول للبدء في استخدام أداة الاستخراج</p>
+          </div>
 
-        <div className="mt-2 relative max-w-md mx-auto" dir="rtl">
-          {authMode === "SITE_PASSWORD" ? (
-            <input
-              type="text"
-              placeholder="أدخل كلمة مرور الموقع هنا..."
-              value={sitePassword}
-              onChange={(e) => setSitePassword(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-600 text-slate-200 rounded-lg py-3 px-4 focus:outline-none focus:border-purple-500 transition-colors text-center font-mono"
-            />
-          ) : (
-            <input
-              type="text"
-              placeholder="الصق مفتاح API هنا..."
-              value={userApiKey}
-              onChange={(e) => setUserApiKey(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-600 text-slate-200 rounded-lg py-3 px-4 focus:outline-none focus:border-purple-500 transition-colors text-center font-mono"
-            />
+          <div className="flex justify-center mb-6 space-x-2 space-x-reverse" dir="rtl">
+            <button
+              onClick={() => { setAuthMode("SITE_PASSWORD"); setErrorMsg(null); }}
+              className={`flex-1 py-3 rounded-xl text-sm font-medium transition-colors flex justify-center items-center space-x-2 space-x-reverse ${
+                authMode === "SITE_PASSWORD" ? "bg-purple-600 text-white shadow-lg shadow-purple-500/30" : "bg-slate-700/50 text-slate-300 hover:bg-slate-700"
+              }`}
+            >
+              <Lock className="w-4 h-4" />
+              <span>كلمة مرور الموقع</span>
+            </button>
+            <button
+              onClick={() => { setAuthMode("OWN_KEY"); setErrorMsg(null); }}
+              className={`flex-1 py-3 rounded-xl text-sm font-medium transition-colors flex justify-center items-center space-x-2 space-x-reverse ${
+                authMode === "OWN_KEY" ? "bg-purple-600 text-white shadow-lg shadow-purple-500/30" : "bg-slate-700/50 text-slate-300 hover:bg-slate-700"
+              }`}
+            >
+              <Key className="w-4 h-4" />
+              <span>مفتاح API الخاص</span>
+            </button>
+          </div>
+
+          <div className="relative mb-6" dir="rtl">
+            {authMode === "SITE_PASSWORD" ? (
+              <input
+                type="text"
+                placeholder="أدخل كلمة مرور الموقع..."
+                value={sitePassword}
+                onChange={(e) => setSitePassword(e.target.value)}
+                className="w-full bg-slate-900/80 border border-slate-600 text-slate-200 rounded-xl py-4 px-4 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all text-center font-mono text-lg"
+                onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
+              />
+            ) : (
+              <input
+                type="text"
+                placeholder="AIzaSy..."
+                value={userApiKey}
+                onChange={(e) => setUserApiKey(e.target.value)}
+                className="w-full bg-slate-900/80 border border-slate-600 text-slate-200 rounded-xl py-4 px-4 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all text-center font-mono text-sm"
+                onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
+              />
+            )}
+          </div>
+          
+          {errorMsg && (
+            <motion.div 
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-center text-red-400 text-sm" 
+              dir="rtl"
+            >
+              {errorMsg}
+            </motion.div>
           )}
-          <p className="text-xs text-slate-400 mt-2 text-center">
-            {authMode === "SITE_PASSWORD" 
-              ? "استخدم كلمة المرور التي يوفرها صاحب الموقع." 
-              : "مفتاحك آمن ولا يتم حفظه على الخوادم."}
-          </p>
+
+          <button
+            onClick={handleVerify}
+            disabled={isVerifying}
+            className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-bold text-lg transition-all shadow-lg shadow-purple-500/25 disabled:opacity-50 flex justify-center items-center"
+          >
+            {isVerifying ? <Loader2 className="w-6 h-6 animate-spin" /> : "تأكيد الدخول"}
+          </button>
         </div>
       </div>
+    );
+  }
 
+  // IDLE State (Authenticated)
+  return (
+    <div className="w-full max-w-2xl mx-auto flex flex-col items-center space-y-6">
       <div 
         {...getRootProps()} 
         className={`w-full p-16 border-2 border-dashed rounded-3xl cursor-pointer transition-all duration-300 backdrop-blur-md ${isDragActive ? 'border-purple-500 bg-purple-500/10' : 'border-slate-500/50 bg-slate-800/40 hover:bg-slate-800/60'}`}
