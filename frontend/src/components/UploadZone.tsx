@@ -43,10 +43,10 @@ export default function UploadZone() {
 
     const formData = new FormData();
     formData.append("file", file);
-    if (authMode === "OWN_KEY" && userApiKey) {
-      formData.append("api_key", userApiKey);
-    } else if (authMode === "SITE_PASSWORD" && sitePassword) {
-      formData.append("site_password", sitePassword);
+    if (authMode === "OWN_KEY" && userApiKey.trim()) {
+      formData.append("api_key", userApiKey.trim());
+    } else if (authMode === "SITE_PASSWORD" && sitePassword.trim()) {
+      formData.append("site_password", sitePassword.trim());
     }
 
     try {
@@ -237,19 +237,19 @@ export default function UploadZone() {
         <div className="mt-2 relative max-w-md mx-auto" dir="rtl">
           {authMode === "SITE_PASSWORD" ? (
             <input
-              type="password"
+              type="text"
               placeholder="أدخل كلمة مرور الموقع هنا..."
               value={sitePassword}
               onChange={(e) => setSitePassword(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-600 text-slate-200 rounded-lg py-3 px-4 focus:outline-none focus:border-purple-500 transition-colors"
+              className="w-full bg-slate-900 border border-slate-600 text-slate-200 rounded-lg py-3 px-4 focus:outline-none focus:border-purple-500 transition-colors text-center font-mono"
             />
           ) : (
             <input
-              type="password"
-              placeholder="AIzaSy..."
+              type="text"
+              placeholder="الصق مفتاح API هنا..."
               value={userApiKey}
               onChange={(e) => setUserApiKey(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-600 text-slate-200 rounded-lg py-3 px-4 focus:outline-none focus:border-purple-500 transition-colors"
+              className="w-full bg-slate-900 border border-slate-600 text-slate-200 rounded-lg py-3 px-4 focus:outline-none focus:border-purple-500 transition-colors text-center font-mono"
             />
           )}
           <p className="text-xs text-slate-400 mt-2 text-center">

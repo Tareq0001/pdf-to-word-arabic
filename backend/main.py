@@ -100,9 +100,9 @@ async def extract_text(
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
         
     final_api_key = None
-    if api_key:
-        final_api_key = api_key
-    elif site_password == server_password:
+    if api_key and api_key.strip():
+        final_api_key = api_key.strip()
+    elif site_password and site_password.strip() == server_password:
         final_api_key = server_api_key
     else:
         raise HTTPException(status_code=401, detail="كلمة المرور غير صحيحة، يرجى التأكد منها أو استخدام مفتاحك الخاص.")
