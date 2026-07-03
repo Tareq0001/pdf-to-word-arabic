@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
@@ -87,15 +87,28 @@ def extract_text_with_gemini_rest(api_key: str, base64_image: str) -> str:
         return ""
 
 @app.post("/api/extract")
-async def extract_text(file: UploadFile = File(...)):
+async def extract_text(
+    file: UploadFile = File(...),
+    api_key: str = Form(None),
+    site_password: str = Form(None)
+):
     """Uploads a PDF and extracts its text using Gemini Flash REST API."""
-    api_key = os.environ.get("GEMINI_API_KEY")
+    server_api_key = os.environ.get("GEMINI_API_KEY")
+    server_password = os.environ.get("SITE_PASSWORD", "0534418634")
     
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
         
-    if not api_key:
-        raise HTTPException(status_code=500, detail="Gemini API Key is not configured on the server.")
+    final_api_key = None
+    if api_key:
+        final_api_key = api_key
+    elif site_password == server_password:
+        final_api_key = server_api_key
+    else:
+        raise HTTPException(status_code=401, detail="كلمة المرور غير صحيحة، يرجى التأكد منها أو استخدام مفتاحك الخاص.")
+        
+    if not final_api_key:
+        raise HTTPException(status_code=500, detail="Gemini API Key is not configured on the server and no key was provided.")
     
     try:
         # Read the uploaded file into memory
@@ -106,7 +119,7 @@ async def extract_text(file: UploadFile = File(...)):
         
         extracted_pages = []
         for i, img in enumerate(images):
-            text = extract_text_with_gemini_rest(api_key, img)
+            text = extract_text_with_gemini_rest(final_api_key, img)
             extracted_pages.append(text)
             
             
