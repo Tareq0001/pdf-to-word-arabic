@@ -40,7 +40,8 @@ export default function UploadZone() {
     formData.append("file", file);
 
     try {
-      const response = await fetch("http://localhost:8000/api/extract", {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const response = await fetch(`${API_URL}/api/extract`, {
         method: "POST",
         body: formData,
       });
@@ -77,7 +78,8 @@ export default function UploadZone() {
     if (!extractedText) return;
     setIsDownloading(true);
     try {
-      const response = await fetch("http://localhost:8000/api/download-docx", {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const response = await fetch(`${API_URL}/api/download-docx`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: extractedText }),
